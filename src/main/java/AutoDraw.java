@@ -1,9 +1,9 @@
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -12,21 +12,27 @@ import org.apache.http.util.EntityUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.net.http.WebSocket.Listener;
-import java.util.Map;
+import java.security.SecureRandom;
+import java.util.Random;
 import java.util.concurrent.CompletionStage;
 
 public class AutoDraw {
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    private static final String host = "://192.168.2.199:8188";
+    private static final String host = "://192.168.195.199:8188";
     private static final String clientId = "CustomJavaAPI";
+    private static final BigInteger maxValue = new BigInteger("9000999999999999");
+    private static final File workflow =
+            new File("/home/jr/ComfyUI/workflow_api.json");
+//    private static final File workflow = new File("C:\\Users\\suyis\\Downloads\\workflow_api.json");
 
     public static void main(String[] args) {
         autoDraw();
-//        getQueueRemain();
+//        getInfo("/object_info");
     }
 
     private static void autoDraw() {
@@ -74,11 +80,12 @@ public class AutoDraw {
     }
 
     private static void pushTask() {
-        String result;
-
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            JsonNode workflowNode = objectMapper.readTree(
-                    new File("/home/jr/ComfyUI/workflow_api.json"));
+            BigInteger seed = generateRandomBigInteger(maxValue);
+            JsonNode workflowNode = objectMapper.readTree(workflow);
+
+            ObjectNode seedNode = (ObjectNode) workflowNode.get("20").get("inputs");
+            seedNode.put("seed", seed);
 
             ObjectNode rootNode = objectMapper.createObjectNode();
             rootNode.put("client_id", clientId);
@@ -95,16 +102,36 @@ public class AutoDraw {
             try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
                 HttpEntity responseEntity = response.getEntity();
                 if (responseEntity != null) {
-                    result = EntityUtils.toString(responseEntity, "utf-8");
-                    Map<String, Object> map = objectMapper.readValue(result, new TypeReference<Map<String, Object>>() {
-                    });
-                    String promptId = (String) map.get("prompt_id");
-                    System.out.println("新建任务： " + promptId);
+                    String result = EntityUtils.toString(responseEntity, "utf-8");
+                    System.out.println(result);
                 }
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static void getInfo(String uri) {
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            HttpGet httpGet = new HttpGet("http" + host + uri);
+            try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+                if (response.getStatusLine().getStatusCode() == 200) {
+                    String result = EntityUtils.toString(response.getEntity(), "UTF-8");
+                    System.out.println(result);
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static BigInteger generateRandomBigInteger(BigInteger maxValue) {
+        Random random = new SecureRandom();
+        BigInteger result;
+        do {
+            result = new BigInteger(maxValue.bitLength(), random);
+        } while (result.compareTo(maxValue) >= 0);
+        return result;
     }
 
 }

@@ -17,18 +17,28 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.net.http.WebSocket.Listener;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CompletionStage;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class AutoDraw {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final String host = "://192.168.195.199:8188";
     private static final String clientId = "CustomJavaAPI";
     private static final BigInteger maxValue = new BigInteger("9000999999999999");
-    private static final File workflow =
-            new File("/home/jr/ComfyUI/workflow_api.json");
+    private static final File workflow = new File("/home/jr/ComfyUI/workflow_api.json");
 //    private static final File workflow = new File("C:\\Users\\suyis\\Downloads\\workflow_api.json");
+
+    private static final List<String> charLines = cleanFile("/home/jr/ComfyUI/char.txt");
+    private static final List<String> locationLines = cleanFile("/home/jr/ComfyUI/location.txt");
+    private static Remark remark;
 
     public static void main(String[] args) {
         autoDraw();
@@ -36,6 +46,7 @@ public class AutoDraw {
     }
 
     private static void autoDraw() {
+        getRemark();
         pushTask();
 
         HttpClient client = HttpClient.newHttpClient();
@@ -70,8 +81,21 @@ public class AutoDraw {
                 JsonNode rootNode = objectMapper.readTree(data.toString());
                 JsonNode queueRemainingNode = rootNode.path("data").path("status").path("exec_info").path("queue_remaining");
                 if (queueRemainingNode.asInt() == 0) {
+                    if (remark.getLocationIndex() == remark.getLocationTotalLines()) {
+                        if (remark.getCharIndex() == remark.getCharTotalLines()) {
+                            remark.setCharIndex(0);
+                            remark.setLocationIndex(0);
+                        } else {
+                            remark.incrementCharIndex();
+                            remark.setLocationIndex(0);
+                        }
+                    } else {
+                        remark.incrementLocationIndex();
+                    }
+                    objectMapper.writeValue(new File("/home/jr/ComfyUI/remark.json"), remark);
                     pushTask();
                 }
+
             } catch (Exception e) {
                 e.printStackTrace();
                 // 为避免解析json出错时，错过剩余任务为0的信息，直接追加一个新任务
@@ -83,11 +107,18 @@ public class AutoDraw {
 
     private static void pushTask() {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            BigInteger seed = generateRandomBigInteger(maxValue);
             JsonNode workflowNode = objectMapper.readTree(workflow);
 
+            BigInteger seed = generateRandomBigInteger(maxValue);
             ObjectNode seedNode = (ObjectNode) workflowNode.get("20").get("inputs");
             seedNode.put("seed", seed);
+
+            String scene = charLines.get(remark.getCharIndex())
+                    + "," + locationLines.get(remark.getLocationIndex());
+            ObjectNode sceneNode = (ObjectNode) workflowNode.get("26").get("inputs");
+            sceneNode.put("text_b", scene);
+            ObjectNode saveNode = (ObjectNode) workflowNode.get("9").get("inputs");
+            saveNode.put("filename_prefix", scene);
 
             ObjectNode rootNode = objectMapper.createObjectNode();
             rootNode.put("client_id", clientId);
@@ -136,4 +167,55 @@ public class AutoDraw {
         return result;
     }
 
+    private static void getRemark() {
+        try {
+            remark = objectMapper.readValue(new File("/home/jr/ComfyUI/remark.json"), Remark.class);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        remark.setCharTotalLines(charLines.size());
+        remark.setLocationTotalLines(locationLines.size());
+
+        String charFeature = computeSHA256(charLines);
+        String locationFeature = computeSHA256(locationLines);
+
+        if (!charFeature.equals(remark.getCharFeature())) {
+            SecureRandom secureRandom = new SecureRandom();
+            int randomIndex = secureRandom.nextInt(remark.getCharTotalLines());
+            remark.setCharIndex(randomIndex);
+            remark.setLocationIndex(0);
+            remark.setCharFeature(charFeature);
+        } else if (!locationFeature.equals(remark.getLocationFeature())) {
+            remark.setLocationIndex(0);
+            remark.setLocationFeature(locationFeature);
+        }
+
+    }
+
+    private static List<String> cleanFile(String filePath) {
+        try (Stream<String> lines = Files.lines(Paths.get(filePath))) {
+            return lines.filter(line -> !line.trim().isEmpty()).collect(Collectors.toList());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static String computeSHA256(List<String> lines) {
+        MessageDigest digest;
+        try {
+            digest = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+        String combinedString = String.join("\n", lines);
+        byte[] hash = digest.digest(combinedString.getBytes());
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : hash) {
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) hexString.append('0');
+            hexString.append(hex);
+        }
+        return hexString.toString();
+    }
 }

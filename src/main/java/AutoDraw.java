@@ -74,6 +74,8 @@ public class AutoDraw {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
+                // 为避免解析json出错时，错过剩余任务为0的信息，直接追加一个新任务
+                pushTask();
             }
             return Listener.super.onText(webSocket, data, last);
         }

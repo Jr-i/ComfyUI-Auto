@@ -1,5 +1,6 @@
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -33,7 +34,18 @@ public class AutoDraw {
     private static final String host = "://192.168.195.199:8188";
     private static final String clientId = "CustomJavaAPI";
     private static final BigInteger maxValue = new BigInteger("9000999999999999");
-    private static final File workflow = new File("/home/jr/ComfyUI/workflow_api.json");
+    private static final JsonNode workflowNode;
+
+    static {
+        objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
+        try {
+            workflowNode = objectMapper.readTree(
+                    new File("/home/jr/ComfyUI/workflow_api.json"));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 //    private static final File workflow = new File("C:\\Users\\suyis\\Downloads\\workflow_api.json");
 
     private static final List<String> charLines = cleanFile("/home/jr/ComfyUI/char.txt");
@@ -81,8 +93,8 @@ public class AutoDraw {
                 JsonNode rootNode = objectMapper.readTree(data.toString());
                 JsonNode queueRemainingNode = rootNode.path("data").path("status").path("exec_info").path("queue_remaining");
                 if (queueRemainingNode.asInt() == 0) {
-                    if (remark.getLocationIndex() == remark.getLocationTotalLines()) {
-                        if (remark.getCharIndex() == remark.getCharTotalLines()) {
+                    if (remark.getLocationIndex() == remark.getLocationTotalLines() - 1) {
+                        if (remark.getCharIndex() == remark.getCharTotalLines() - 1) {
                             remark.setCharIndex(0);
                             remark.setLocationIndex(0);
                         } else {
@@ -107,8 +119,6 @@ public class AutoDraw {
 
     private static void pushTask() {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            JsonNode workflowNode = objectMapper.readTree(workflow);
-
             BigInteger seed = generateRandomBigInteger(maxValue);
             ObjectNode seedNode = (ObjectNode) workflowNode.get("20").get("inputs");
             seedNode.put("seed", seed);

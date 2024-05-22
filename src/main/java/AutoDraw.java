@@ -24,20 +24,22 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class AutoDraw {
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper objectMapper = new ObjectMapper()
+            .enable(SerializationFeature.INDENT_OUTPUT);
+    private static final SecureRandom secureRandom = new SecureRandom();
     private static final String host = "://192.168.195.199:8188";
     private static final String clientId = "CustomJavaAPI";
-    private static final BigInteger maxValue = new BigInteger("9000999999999999");
+    private static final List<String> charLines = cleanFile("/home/jr/ComfyUI/char.txt");
+    private static final List<String> locationLines = cleanFile("/home/jr/ComfyUI/location.txt");
+    private static Remark remark;
     private static final JsonNode workflowNode;
 
     static {
-        objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
         try {
             workflowNode = objectMapper.readTree(
                     new File("/home/jr/ComfyUI/workflow_api.json"));
@@ -45,12 +47,6 @@ public class AutoDraw {
             throw new RuntimeException(e);
         }
     }
-
-//    private static final File workflow = new File("C:\\Users\\suyis\\Downloads\\workflow_api.json");
-
-    private static final List<String> charLines = cleanFile("/home/jr/ComfyUI/char.txt");
-    private static final List<String> locationLines = cleanFile("/home/jr/ComfyUI/location.txt");
-    private static Remark remark;
 
     public static void main(String[] args) {
         autoDraw();
@@ -73,7 +69,7 @@ public class AutoDraw {
         }
     }
 
-    static class WebSocketListener implements Listener {
+    private static class WebSocketListener implements Listener {
         @Override
         public void onOpen(WebSocket webSocket) {
             System.out.println("WebSocket连接建立");
@@ -119,7 +115,7 @@ public class AutoDraw {
 
     private static void pushTask() {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            BigInteger seed = generateRandomBigInteger(maxValue);
+            BigInteger seed = generateRandomBigInteger();
             ObjectNode seedNode = (ObjectNode) workflowNode.get("20").get("inputs");
             seedNode.put("seed", seed);
 
@@ -168,12 +164,12 @@ public class AutoDraw {
         }
     }
 
-    public static BigInteger generateRandomBigInteger(BigInteger maxValue) {
-        Random random = new SecureRandom();
+    private static BigInteger generateRandomBigInteger() {
+        BigInteger maxValue = new BigInteger("9000999999999999");
         BigInteger result;
         do {
-            result = new BigInteger(maxValue.bitLength(), random);
-        } while (result.compareTo(maxValue) >= 0);
+            result = new BigInteger(maxValue.bitLength(), secureRandom);
+        } while (result.compareTo(maxValue) > 0);
         return result;
     }
 
@@ -191,7 +187,6 @@ public class AutoDraw {
         String locationFeature = computeSHA256(locationLines);
 
         if (!charFeature.equals(remark.getCharFeature())) {
-            SecureRandom secureRandom = new SecureRandom();
             int randomIndex = secureRandom.nextInt(remark.getCharTotalLines());
             remark.setCharIndex(randomIndex);
             remark.setLocationIndex(0);

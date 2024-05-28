@@ -37,24 +37,29 @@ public class AutoDraw {
     private static final List<String> charLines = cleanFile("/home/jr/ComfyUI/char.txt");
     private static final List<String> locationLines = cleanFile("/home/jr/ComfyUI/location.txt");
     private static Remark remark;
-    private static final JsonNode workflowNode;
-
-    static {
-        try {
-            workflowNode = objectMapper.readTree(
-                    new File("/home/jr/ComfyUI/workflow_api.json"));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
+    private static JsonNode workflowNode = null;
 
     public static void main(String[] args) {
-        autoDraw();
+        autoDraw(args);
 //        getInfo("/object_info");
     }
 
-    private static void autoDraw() {
+    private static void autoDraw(String[] args) {
         getRemark();
+
+        // 从参数中获取工作流
+        if (args.length > 0) {
+            String fileName = args[0];
+            try {
+                workflowNode = objectMapper.readTree(
+                        new File("/home/jr/ComfyUI/" + fileName + ".json"));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        } else {
+            System.out.println("请指明工作流文件的名称");
+        }
+
         pushTask();
 
         HttpClient client = HttpClient.newHttpClient();
@@ -173,6 +178,9 @@ public class AutoDraw {
         return result;
     }
 
+    /**
+     * 校验char、location文件是否被修改，获取上次读取的文件位置
+     */
     private static void getRemark() {
         try {
             remark = objectMapper.readValue(new File("/home/jr/ComfyUI/remark.json"), Remark.class);

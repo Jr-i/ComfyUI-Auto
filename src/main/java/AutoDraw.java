@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -32,20 +31,20 @@ public class AutoDraw {
     private static final ObjectMapper objectMapper = new ObjectMapper()
             .enable(SerializationFeature.INDENT_OUTPUT);
     private static final SecureRandom secureRandom = new SecureRandom();
-    private static final String host = "://192.168.195.199:8188";
+    private static final String host = "://192.168.2.199:8188";
     private static final String clientId = "CustomJavaAPI";
-    private static final List<String> charLines = cleanFile("/home/jr/ComfyUI/char.txt");
-    private static final List<String> locationLines = cleanFile("/home/jr/ComfyUI/location.txt");
+    private static List<String> charLines;
+    private static List<String> locationLines;
     private static Remark remark;
     private static JsonNode workflowNode = null;
 
     public static void main(String[] args) {
-        autoDraw(args);
-//        getInfo("/object_info");
+//        autoDraw(args);
+        JsonNode pngInfo = Util.getPrompt(new File("C:\\Users\\suyis\\Downloads\\dress,jewelry,downtown_00001_.png"));
     }
 
     private static void autoDraw(String[] args) {
-        getRemark();
+        readRemark();
 
         // 从参数中获取工作流
         if (args.length > 0) {
@@ -155,20 +154,6 @@ public class AutoDraw {
         }
     }
 
-    private static void getInfo(String uri) {
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            HttpGet httpGet = new HttpGet("http" + host + uri);
-            try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
-                if (response.getStatusLine().getStatusCode() == 200) {
-                    String result = EntityUtils.toString(response.getEntity(), "UTF-8");
-                    System.out.println(result);
-                }
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     private static BigInteger generateRandomBigInteger() {
         BigInteger maxValue = new BigInteger("9000999999999999");
         BigInteger result;
@@ -181,12 +166,15 @@ public class AutoDraw {
     /**
      * 校验char、location文件是否被修改，获取上次读取的文件位置
      */
-    private static void getRemark() {
+    private static void readRemark() {
         try {
             remark = objectMapper.readValue(new File("/home/jr/ComfyUI/remark.json"), Remark.class);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
+        charLines = deleteEmptyLine("/home/jr/ComfyUI/char.txt");
+        locationLines = deleteEmptyLine("/home/jr/ComfyUI/location.txt");
 
         remark.setCharTotalLines(charLines.size());
         remark.setLocationTotalLines(locationLines.size());
@@ -206,7 +194,7 @@ public class AutoDraw {
 
     }
 
-    private static List<String> cleanFile(String filePath) {
+    private static List<String> deleteEmptyLine(String filePath) {
         try (Stream<String> lines = Files.lines(Paths.get(filePath))) {
             return lines.filter(line -> !line.trim().isEmpty()).collect(Collectors.toList());
         } catch (IOException e) {

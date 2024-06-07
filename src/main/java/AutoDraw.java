@@ -10,6 +10,8 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -27,6 +29,7 @@ public class AutoDraw {
     private static final String clientId = "CustomJavaAPI";
     private static String workflowFileName;
     private static ObjectNode jsonNodes;
+    private static boolean flag = false; // 是否存在待移动的4K图片
 
     public static void main(String[] args) {
         if (args.length > 0) {
@@ -37,7 +40,7 @@ public class AutoDraw {
 
         File[] files = new File("input").listFiles();
         // 有待放大图片，执行放大工作流
-        if (files != null) {
+        if (files.length != 0) {
             jsonNodes = Upscale.upscaleWorkflowBuilder(files[0]);
         }
         // 无待放大图片，执行动态提示词工作流
@@ -105,22 +108,24 @@ public class AutoDraw {
                 JsonNode rootNode = objectMapper.readTree(data.toString());
                 JsonNode queueRemainingNode = rootNode.get("data").get("status").get("exec_info").get("queue_remaining");
                 if (queueRemainingNode.asInt() == 0) {
-                    // 移动已放大的原图片
+                    // 删除已放大的原图片
                     File[] files = new File("input").listFiles();
-                    if (files != null) {
-                        Path source = Path.of("input/" + files[0].getName());
-                        Path target = Path.of("output/upscale/" + files[0].getName());
-                        Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
-                        System.out.println("文件移动成功");
+                    if (files.length != 0) {
+                        flag = files[0].delete();
                     }
 
-                    File[] files2 = new File("input").listFiles();
                     // 有待放大图片，执行放大工作流
-                    if (files2 != null) {
-                        jsonNodes = Upscale.upscaleWorkflowBuilder(files2[0]);
+                    if (files.length != 0) {
+                        jsonNodes = Upscale.upscaleWorkflowBuilder(files[0]);
                     }
                     // 无待放大图片，执行动态提示词工作流
                     else {
+                        // 执行过放大操作，且完成全部放大工作
+                        if (flag) {
+                            // 移动4K图片
+                            move4K();
+                            flag = false;
+                        }
                         jsonNodes = DynamicPrompt.dynamicBuilder(workflowFileName);
                     }
                     pushTask(jsonNodes);
@@ -133,6 +138,27 @@ public class AutoDraw {
                 pushTask(jsonNodes);
             }
             return WebSocket.Listener.super.onText(webSocket, data, last);
+        }
+    }
+
+    private static void move4K() {
+        File output = new File("output");
+        File[] files = output.listFiles(e ->
+                e.isFile() && e.getName().endsWith(".png"));
+
+        for (File file : files) {
+            try {
+                BufferedImage image = ImageIO.read(file);
+                if (image.getWidth() == 2160 && image.getHeight() == 3840) {
+                    // 分辨率为4K，移动文件
+                    Path source = file.toPath();
+                    Path target = Path.of("output/upscale/" + file.getName());
+                    Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+                    System.out.println("文件移动成功");
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 

@@ -33,6 +33,16 @@ public class Upscale {
             upscaleNodes.with("46").with("inputs")
                     .put("image", file.getName());
 
+            // 非动漫图片使用真实系放大模型
+            String checkpoint = promptNode.get("43").get("inputs").get("ckpt_name")
+                    .textValue().replace(".safetensors", "");
+            if (!"animagineXLV31_v31".equals(checkpoint) &&
+                    !"autismmixSDXL_autismmixLightning".equals(checkpoint) &&
+                    !"raemuXL_v35Lightning".equals(checkpoint)) {
+                promptNode.with("51").with("inputs")
+                        .put("model_name", "4x_NMKD-Superscale-SP_178000_G.pth");
+            }
+
             // 将upscaleNodes合并到promptNode中
             for (Iterator<String> it = upscaleNodes.fieldNames(); it.hasNext(); ) {
                 String key = it.next();

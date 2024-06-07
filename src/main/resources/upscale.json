@@ -1,0 +1,97 @@
+{
+  "45": {
+    "inputs": {
+      "upscale_method": "bislerp",
+      "scale_by": 1.5,
+      "samples": [
+        "48",
+        0
+      ]
+    },
+    "class_type": "LatentUpscaleBy",
+    "_meta": {
+      "title": "Latent按系数缩放"
+    }
+  },
+  "46": {
+    "inputs": {
+      "image": "white thighhighs,bus stop_00001_.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "加载图像"
+    }
+  },
+  "48": {
+    "inputs": {
+      "pixels": [
+        "46",
+        0
+      ],
+      "vae": [
+        "43",
+        4
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE编码"
+    }
+  },
+  "49": {
+    "inputs": {
+      "width": 1080,
+      "height": 1920,
+      "x": 36,
+      "y": 0,
+      "image": [
+        "20",
+        5
+      ]
+    },
+    "class_type": "ImageCrop",
+    "_meta": {
+      "title": "图像裁剪"
+    }
+  },
+  "50": {
+    "inputs": {
+      "upscale_model": [
+        "51",
+        0
+      ],
+      "image": [
+        "49",
+        0
+      ]
+    },
+    "class_type": "ImageUpscaleWithModel",
+    "_meta": {
+      "title": "图像通过模型放大"
+    }
+  },
+  "51": {
+    "inputs": {
+      "model_name": "4x_NMKD-Yandere2_255000_G.pth"
+    },
+    "class_type": "UpscaleModelLoader",
+    "_meta": {
+      "title": "放大模型加载器"
+    }
+  },
+  "52": {
+    "inputs": {
+      "upscale_method": "area",
+      "scale_by": 0.5,
+      "image": [
+        "50",
+        0
+      ]
+    },
+    "class_type": "ImageScaleBy",
+    "_meta": {
+      "title": "图像按系数缩放"
+    }
+  }
+}

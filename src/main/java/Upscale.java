@@ -12,7 +12,7 @@ public class Upscale {
     private static final ObjectMapper objectMapper = new ObjectMapper()
             .enable(SerializationFeature.INDENT_OUTPUT);
 
-    public static void upscaleWorkflowBuilder(File file) {
+    public static ObjectNode upscaleWorkflowBuilder(File file) {
         try {
             // 从图片中获取注释信息
             String comment = Imaging.getImageInfo(file).getComments().get(0);
@@ -39,7 +39,7 @@ public class Upscale {
                 promptNode.set(key, upscaleNodes.get(key));
             }
 
-            System.out.println(promptNode);
+            return promptNode;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

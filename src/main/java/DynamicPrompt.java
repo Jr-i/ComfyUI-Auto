@@ -33,7 +33,7 @@ public class DynamicPrompt {
             }
         }
 
-        BigInteger seed = generateRandomBigInteger();
+        BigInteger seed = new BigInteger(64, secureRandom); // 生成一个64位的随机数
         workflowNode.with("20").with("inputs")
                 .put("seed", seed);
 
@@ -66,15 +66,6 @@ public class DynamicPrompt {
                 .put("filename_prefix", scene);
 
         return workflowNode;
-    }
-
-    private static BigInteger generateRandomBigInteger() {
-        BigInteger maxValue = new BigInteger("9000999999999999");
-        BigInteger result;
-        do {
-            result = new BigInteger(maxValue.bitLength(), secureRandom);
-        } while (result.compareTo(maxValue) > 0);
-        return result;
     }
 
     /**

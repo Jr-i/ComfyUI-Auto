@@ -28,6 +28,10 @@ public class Upscale {
             kSamplerNode.put("denoise", 0.55);
             kSamplerNode.putArray("latent_image").add("45").add(0);
 
+            promptNode.with("20").with("inputs")
+                    .put("denoise", 0.55)
+                    .putArray("latent_image").add("45").add(0);
+
             InputStream resourceAsStream = Upscale.class.getResourceAsStream("upscale.json");
             ObjectNode upscaleNodes = (ObjectNode) objectMapper.readTree(resourceAsStream);
             upscaleNodes.with("46").with("inputs")
@@ -39,8 +43,15 @@ public class Upscale {
             if (!"animagineXLV31_v31".equals(checkpoint) &&
                     !"autismmixSDXL_autismmixLightning".equals(checkpoint) &&
                     !"raemuXL_v35Lightning".equals(checkpoint)) {
-                promptNode.with("51").with("inputs")
+                upscaleNodes.with("51").with("inputs")
                         .put("model_name", "4x_NMKD-Superscale-SP_178000_G.pth");
+            }
+
+            // 非竖直图片更换裁剪方式
+            if (promptNode.get("43").get("inputs").get("empty_latent_width").asInt() == 1280) {
+                upscaleNodes.with("49").with("inputs")
+                        .put("x", 0)
+                        .put("y", 36);
             }
 
             // 将upscaleNodes合并到promptNode中

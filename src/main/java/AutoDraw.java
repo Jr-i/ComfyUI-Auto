@@ -155,7 +155,7 @@ public class AutoDraw {
         for (File file : files) {
             try {
                 BufferedImage image = ImageIO.read(file);
-                if (image.getWidth() == 2160 && image.getHeight() == 3840) {
+                if (image.getWidth() == 2160 || image.getHeight() == 2160) {
                     // 分辨率为4K，移动文件
                     Path source = file.toPath();
                     Path target = Path.of("output/upscale/" + file.getName());

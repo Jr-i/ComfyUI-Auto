@@ -27,19 +27,12 @@ public class AutoDraw {
             .enable(SerializationFeature.INDENT_OUTPUT);
     private static final String host = "://192.168.2.199:8188";
     private static final String clientId = "CustomJavaAPI";
-    private static String workflowFileName;
     private static ObjectNode jsonNodes;
     private static boolean moveFlag = false; // 完成全部放大操作，需要移动图片
     private static boolean deleteFlag = false; // 执行过放大操作，需要删除原图
 
 
     public static void main(String[] args) {
-        if (args.length > 0) {
-            workflowFileName = args[0];
-        } else {
-            System.out.println("请指明工作流文件的名称");
-        }
-
         File[] files = new File("input").listFiles();
         // 有待放大图片，执行放大工作流
         if (files.length > 0) {
@@ -48,7 +41,7 @@ public class AutoDraw {
         }
         // 无待放大图片，执行动态提示词工作流
         else {
-            jsonNodes = DynamicPrompt.dynamicBuilder(workflowFileName);
+            jsonNodes = DynamicPrompt.dynamicBuilder();
         }
         pushTask(jsonNodes);
 
@@ -132,7 +125,7 @@ public class AutoDraw {
                             move4K();
                             moveFlag = false;
                         }
-                        jsonNodes = DynamicPrompt.dynamicBuilder(workflowFileName);
+                        jsonNodes = DynamicPrompt.dynamicBuilder();
                     }
                     pushTask(jsonNodes);
                 }
@@ -140,7 +133,7 @@ public class AutoDraw {
             } catch (Exception e) {
                 e.printStackTrace();
                 // 为避免解析json出错时，错过剩余任务为0的信息，直接追加一个新任务
-                jsonNodes = DynamicPrompt.dynamicBuilder(workflowFileName);
+                jsonNodes = DynamicPrompt.dynamicBuilder();
                 pushTask(jsonNodes);
             }
             return WebSocket.Listener.super.onText(webSocket, data, last);

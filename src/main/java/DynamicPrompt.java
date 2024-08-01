@@ -22,12 +22,42 @@ public class DynamicPrompt {
     private static List<String> locationLines;
     private static Remark remark;
     private static ObjectNode workflowNode;
+    static String[] configName =
+            {"Animagine", "DreamShaper", "Juggernaut", "LEOSAM", "Raemu", "Realities", "RealVisXL"};
 
-    public static ObjectNode dynamicBuilder(String fileName) {
+    public static ObjectNode dynamicBuilder() {
+        if (remark == null) {
+            readRemark();
+        } else {
+            remark.setLandscape(!remark.isLandscape());
+
+            if (remark.isLandscape()) {
+                if (remark.getLocationIndex() == remark.getLocationTotalLines() - 1) {
+                    if (remark.getCharIndex() == remark.getCharTotalLines() - 1) {
+                        remark.incrementConfigIndex();
+                        workflowNode = null;
+                        remark.setCharIndex(0);
+                        remark.setLocationIndex(0);
+                    } else {
+                        remark.incrementCharIndex();
+                        remark.setLocationIndex(0);
+                    }
+                } else {
+                    remark.incrementLocationIndex();
+                }
+            }
+
+            try {
+                objectMapper.writeValue(new File("remark.json"), remark);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
         if (workflowNode == null) {
             try {
                 workflowNode = (ObjectNode) objectMapper.readTree(
-                        new File(fileName + ".json"));
+                        new File(configName[remark.getConfigIndex()] + ".json"));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -37,33 +67,22 @@ public class DynamicPrompt {
         workflowNode.with("20").with("inputs")
                 .put("seed", seed);
 
-        if (remark == null) {
-            readRemark();
-        } else {
-            if (remark.getLocationIndex() == remark.getLocationTotalLines() - 1) {
-                if (remark.getCharIndex() == remark.getCharTotalLines() - 1) {
-                    remark.setCharIndex(0);
-                    remark.setLocationIndex(0);
-                } else {
-                    remark.incrementCharIndex();
-                    remark.setLocationIndex(0);
-                }
-            } else {
-                remark.incrementLocationIndex();
-            }
-            try {
-                objectMapper.writeValue(new File("remark.json"), remark);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
         String scene = charLines.get(remark.getCharIndex())
                 + "," + locationLines.get(remark.getLocationIndex());
         workflowNode.with("26").with("inputs")
                 .put("text_b", scene);
         workflowNode.with("9").with("inputs")
                 .put("filename_prefix", scene);
+
+        if (remark.isLandscape()) {
+            workflowNode.with("43").with("inputs")
+                    .put("empty_latent_width", 1280)
+                    .put("empty_latent_height", 768);
+        } else {
+            workflowNode.with("43").with("inputs")
+                    .put("empty_latent_width", 768)
+                    .put("empty_latent_height", 1280);
+        }
 
         return workflowNode;
     }
@@ -88,8 +107,7 @@ public class DynamicPrompt {
         String locationFeature = computeSHA256(locationLines);
 
         if (!charFeature.equals(remark.getCharFeature())) {
-            int randomIndex = secureRandom.nextInt(remark.getCharTotalLines());
-            remark.setCharIndex(randomIndex);
+            remark.setCharIndex(0);
             remark.setLocationIndex(0);
             remark.setCharFeature(charFeature);
         } else if (!locationFeature.equals(remark.getLocationFeature())) {

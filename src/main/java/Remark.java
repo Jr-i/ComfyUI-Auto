@@ -4,8 +4,8 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Remark {
-    // 当前加载的配置文件名称
-    private String configName;
+    // 当前加载的配置序号
+    private int configIndex;
     // 图片是否为横屏
     private boolean isLandscape;
     // char.txt的特征码
@@ -27,5 +27,13 @@ public class Remark {
 
     public void incrementLocationIndex() {
         this.locationIndex++;
+    }
+
+    public void incrementConfigIndex() {
+        if (this.configIndex >= DynamicPrompt.configName.length - 1) {
+            this.configIndex = 0;
+        } else {
+            this.configIndex++;
+        }
     }
 }

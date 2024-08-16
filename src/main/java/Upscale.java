@@ -51,7 +51,9 @@ public class Upscale {
             if (promptNode.get("43").get("inputs").get("empty_latent_width").asInt() == 1280) {
                 upscaleNodes.with("49").with("inputs")
                         .put("x", 0)
-                        .put("y", 36);
+                        .put("y", 36)
+                        .put("width", 1920)
+                        .put("height", 1080);
             }
 
             // 将upscaleNodes合并到promptNode中

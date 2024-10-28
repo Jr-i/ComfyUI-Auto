@@ -28,8 +28,9 @@ public class ImageInfoPrint {
         headerRow.createCell(0).setCellValue("模型");
         headerRow.createCell(1).setCellValue("设定");
         for (int i = 0; i < images.size(); i++) {
+            Row row = sheet.createRow(i + 1);
             for (int j = 0; j < images.get(i).size(); j++) {
-                sheet.createRow(i + 1).createCell(j).setCellValue(images.get(i).get(j));
+                row.createCell(j).setCellValue(images.get(i).get(j));
             }
         }
 

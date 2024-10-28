@@ -22,7 +22,7 @@ public class DynamicPrompt {
     private static List<String> locationLines;
     private static Remark remark;
     private static ObjectNode workflowNode;
-    static String[] configName =
+    final static String[] configName =
             {"Animagine", "DreamShaper", "Juggernaut", "LEOSAM", "Raemu", "Realities", "RealVisXL"};
 
     public static ObjectNode dynamicBuilder() {

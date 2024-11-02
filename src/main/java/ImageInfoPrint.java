@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 public class ImageInfoPrint {
     public static void main(String[] args) {
@@ -26,7 +27,8 @@ public class ImageInfoPrint {
         Sheet sheet = workbook.createSheet("图片信息");
         Row headerRow = sheet.createRow(0);
         headerRow.createCell(0).setCellValue("模型");
-        headerRow.createCell(1).setCellValue("设定");
+        headerRow.createCell(1).setCellValue("角色");
+        headerRow.createCell(2).setCellValue("地点");
         for (int i = 0; i < images.size(); i++) {
             Row row = sheet.createRow(i + 1);
             for (int j = 0; j < images.get(i).size(); j++) {
@@ -82,7 +84,18 @@ public class ImageInfoPrint {
 
             ArrayList<String> imageInfo = new ArrayList<>();
             imageInfo.add(checkpoint);
-            imageInfo.add(inputInfo);
+
+            List<String> locationLines = DynamicPrompt
+                    .deleteEmptyLine("C:\\Users\\suyis\\OneDrive\\其他\\location.txt");
+            for (String locationLine : locationLines) {
+                int index = inputInfo.indexOf(locationLine);
+                if (index != -1) {
+                    imageInfo.add(inputInfo.substring(0, index - 1));
+                    imageInfo.add(locationLine);
+                }
+            }
+//            System.out.println(imageInfo);
+
             images.add(imageInfo);
         }
 

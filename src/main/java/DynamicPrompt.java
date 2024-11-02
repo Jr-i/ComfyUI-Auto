@@ -23,7 +23,7 @@ public class DynamicPrompt {
     private static Remark remark;
     private static ObjectNode workflowNode;
     final static String[] configName =
-            {"Animagine", "DreamShaper", "Juggernaut", "LEOSAM", "Raemu", "Realities", "RealVisXL"};
+            {"Animagine", "DreamShaper", "LEOSAM", "Raemu", "RealVisXL"};
 
     public static ObjectNode dynamicBuilder() {
         if (remark == null) {
@@ -117,7 +117,7 @@ public class DynamicPrompt {
 
     }
 
-    private static List<String> deleteEmptyLine(String filePath) {
+    static List<String> deleteEmptyLine(String filePath) {
         try (Stream<String> lines = Files.lines(Paths.get(filePath))) {
             return lines.filter(line -> !line.trim().isEmpty()).collect(Collectors.toList());
         } catch (IOException e) {

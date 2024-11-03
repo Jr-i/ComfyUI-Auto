@@ -76,15 +76,13 @@ public class ImageInfoPrint {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            String checkpoint = promptNode.get("43").get("inputs").get("ckpt_name")
-                    .textValue().replace(".safetensors", "");
-
-            String fileName = file.getName();
-            String inputInfo = fileName.substring(0, fileName.lastIndexOf("_0"));
 
             ArrayList<String> imageInfo = new ArrayList<>();
+            String checkpoint = promptNode.get("43").get("inputs").get("ckpt_name")
+                    .textValue().replace(".safetensors", "");
             imageInfo.add(checkpoint);
 
+            String inputInfo = promptNode.get("26").get("inputs").get("text_b").textValue();
             List<String> locationLines = DynamicPrompt
                     .deleteEmptyLine("C:\\Users\\suyis\\OneDrive\\其他\\location.txt");
             for (String locationLine : locationLines) {

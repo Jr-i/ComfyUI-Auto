@@ -23,7 +23,7 @@ public class DynamicPrompt {
     private static Remark remark;
     private static ObjectNode workflowNode;
     final static String[] configName =
-            {"Animagine", "DreamShaper", "LEOSAM", "Raemu", "RealVisXL"};
+            {"WAI-REALMIX", "Animagine", "LEOSAM", "Raemu"};
 
     public static ObjectNode dynamicBuilder() {
         if (remark == null) {

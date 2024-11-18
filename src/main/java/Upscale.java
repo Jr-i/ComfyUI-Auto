@@ -24,10 +24,6 @@ public class Upscale {
             promptNode.with("9").with("inputs")
                     .putArray("images").add("52").add(0);
 
-            ObjectNode kSamplerNode = (ObjectNode) promptNode.get("20").get("inputs");
-            kSamplerNode.put("denoise", 0.55);
-            kSamplerNode.putArray("latent_image").add("45").add(0);
-
             promptNode.with("20").with("inputs")
                     .put("denoise", 0.55)
                     .putArray("latent_image").add("45").add(0);
@@ -41,7 +37,7 @@ public class Upscale {
             String checkpoint = promptNode.get("43").get("inputs").get("ckpt_name")
                     .textValue().replace(".safetensors", "");
             if (!"animagineXLV31_v31".equals(checkpoint) &&
-                    !"autismmixSDXL_autismmixLightning".equals(checkpoint) &&
+                    !"waiREALMIX_v11".equals(checkpoint) &&
                     !"raemuXL_v35Lightning".equals(checkpoint)) {
                 upscaleNodes.with("51").with("inputs")
                         .put("model_name", "4x_NMKD-Superscale-SP_178000_G.pth");

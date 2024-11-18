@@ -22,8 +22,8 @@ public class DynamicPrompt {
     private static List<String> locationLines;
     private static Remark remark;
     private static ObjectNode workflowNode;
-    final static String[] configName =
-            {"WAI-REALMIX", "Animagine", "LEOSAM", "Raemu"};
+    final static String[] configName = {"WAI-REALMIX"};
+//            {"WAI-REALMIX", "Animagine", "LEOSAM", "Raemu"};
 
     public static ObjectNode dynamicBuilder() {
         if (remark == null) {
@@ -67,12 +67,14 @@ public class DynamicPrompt {
         workflowNode.with("20").with("inputs")
                 .put("seed", seed);
 
-        String scene = charLines.get(remark.getCharIndex())
-                + "," + locationLines.get(remark.getLocationIndex());
+        String character = charLines.get(remark.getCharIndex());
+        String location = locationLines.get(remark.getLocationIndex());
         workflowNode.with("26").with("inputs")
-                .put("text_b", scene);
+                .put("text_b", character);
+        workflowNode.with("26").with("inputs")
+                .put("text_c", location);
         workflowNode.with("9").with("inputs")
-                .put("filename_prefix", scene);
+                .put("filename_prefix", character.substring(7));
 
         if (remark.isLandscape()) {
             workflowNode.with("43").with("inputs")

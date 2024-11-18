@@ -82,17 +82,25 @@ public class ImageInfoPrint {
                     .textValue().replace(".safetensors", "");
             imageInfo.add(checkpoint);
 
-            String inputInfo = promptNode.get("26").get("inputs").get("text_b").textValue();
+            // 获取角色和场景
+            String text_b = promptNode.get("26").get("inputs").get("text_b").textValue();
+            String text_c = promptNode.get("26").get("inputs").get("text_c").textValue();
+            // 情况一：角色和场景在不同的输入框中
+            if ("waiREALMIX_v11".equals(checkpoint) && !"".equals(text_c)) {
+                imageInfo.add(text_b);
+                imageInfo.add(text_c);
+                continue;
+            }
+            // 情况二：角色和场景在同一个输入框中
             List<String> locationLines = DynamicPrompt
                     .deleteEmptyLine("C:\\Users\\suyis\\OneDrive\\其他\\location.txt");
             for (String locationLine : locationLines) {
-                int index = inputInfo.indexOf(locationLine);
+                int index = text_b.indexOf(locationLine);
                 if (index != -1) {
-                    imageInfo.add(inputInfo.substring(0, index - 1));
+                    imageInfo.add(text_b.substring(0, index - 1));
                     imageInfo.add(locationLine);
                 }
             }
-//            System.out.println(imageInfo);
 
             images.add(imageInfo);
         }

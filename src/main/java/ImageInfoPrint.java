@@ -54,7 +54,7 @@ public class ImageInfoPrint {
                 if (file.isDirectory()) {
                     // 递归调用以处理子文件夹
                     listImages(file, imageFiles);
-                } else if (file.getName().endsWith("png")) {
+                } else if (file.getName().endsWith("png") || file.getName().endsWith("PNG")) {
                     imageFiles.add(file);
                 }
             }
@@ -89,6 +89,7 @@ public class ImageInfoPrint {
             if ("waiREALMIX_v11".equals(checkpoint) && !"".equals(text_c)) {
                 imageInfo.add(text_b);
                 imageInfo.add(text_c);
+                images.add(imageInfo);
                 continue;
             }
             // 情况二：角色和场景在同一个输入框中
@@ -101,7 +102,6 @@ public class ImageInfoPrint {
                     imageInfo.add(locationLine);
                 }
             }
-
             images.add(imageInfo);
         }
 

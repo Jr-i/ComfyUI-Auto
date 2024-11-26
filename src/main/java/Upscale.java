@@ -37,7 +37,7 @@ public class Upscale {
             String checkpoint = promptNode.get("43").get("inputs").get("ckpt_name")
                     .textValue().replace(".safetensors", "");
             if (!"animagineXLV31_v31".equals(checkpoint) &&
-                    !"waiREALMIX_v11".equals(checkpoint) &&
+//                    !"waiREALMIX_v11".equals(checkpoint) &&
                     !"raemuXL_v35Lightning".equals(checkpoint)) {
                 upscaleNodes.with("51").with("inputs")
                         .put("model_name", "4x_NMKD-Superscale-SP_178000_G.pth");

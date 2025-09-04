@@ -1,131 +1,39 @@
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.apache.http.HttpEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
-
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
-import java.net.http.WebSocket;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.util.concurrent.CompletionStage;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class NewAutoDraw {
-    private static final ObjectMapper objectMapper = new ObjectMapper()
-            .enable(SerializationFeature.INDENT_OUTPUT);
-    private static final String host = "://127.0.0.1:8188";
-    private static final String clientId = "CustomJavaAPI";
-    private final static ComfyUIWorkflowGenerator generator = new ComfyUIWorkflowGenerator();
+    private static final String clientId = "javaClient";
+    public static final String host = "127.0.0.1:8188";
 
     public static void main(String[] args) {
-        ObjectNode jsonNodes = generator.nextWorkflow();
-        pushTask(jsonNodes);
+        // todo 采用更优雅的保活方式
+        new Timer().scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                new AtomicInteger(0).incrementAndGet();
+            }
+        }, 0, 1000); // 立即开始，每秒执行一次
 
-        // 启动WebSocket
+        // 用于在示例中阻塞主线程，直到WebSocket关闭
+        CountDownLatch latch = new CountDownLatch(1);
+
+        // 1. 创建 HttpClient 实例
         HttpClient client = HttpClient.newHttpClient();
-        URI uri = URI.create("ws" + host + "/ws?client_id=" + clientId);
-        client.newWebSocketBuilder().buildAsync(uri, new WebSocketListener()).join();
+        System.out.println("正在连接到 WebSocket 服务器...");
 
-        // 维持WebSocket
-        try {
-            Thread.currentThread().join();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        // 2. 使用 HttpClient 构建 WebSocket 连接
+        //    - 第一个参数是服务器URI
+        //    - 第二个参数是我们自定义的监听器实例
+        client.newWebSocketBuilder()
+                .buildAsync(
+                        URI.create("ws://" + host + "/ws?client_id=" + clientId), // 一个公共的WebSocket回显服务器
+                        new MyWebSocketListener(latch)
+                )
+                .join();
+        System.out.println("WebSocket 握手完成，客户端已就绪。");
     }
-
-    private static void pushTask(ObjectNode workflowNode) {
-        ObjectNode rootNode = objectMapper.createObjectNode();
-        rootNode.put("client_id", clientId);
-        rootNode.set("prompt", workflowNode);
-
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            String jsonString = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(rootNode);
-
-            StringEntity params = new StringEntity(jsonString, "utf-8");
-
-            HttpPost httpPost = new HttpPost("http" + host + "/prompt");
-            httpPost.addHeader("content-type", "application/json");
-            httpPost.setEntity(params);
-
-            try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
-                HttpEntity responseEntity = response.getEntity();
-                if (responseEntity != null) {
-                    String result = EntityUtils.toString(responseEntity, "utf-8");
-                    System.out.println(result);
-                }
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static class WebSocketListener implements WebSocket.Listener {
-        @Override
-        public void onOpen(WebSocket webSocket) {
-            System.out.println("WebSocket连接建立");
-            WebSocket.Listener.super.onOpen(webSocket);
-        }
-
-        @Override
-        public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
-            System.out.println("WebSocket连接关闭");
-            return WebSocket.Listener.super.onClose(webSocket, statusCode, reason);
-        }
-
-        @Override
-        public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
-            System.out.println(data.toString());
-            ObjectNode jsonNodes;
-            try {
-                JsonNode rootNode = objectMapper.readTree(data.toString());
-                JsonNode queueRemainingNode = rootNode.get("data").get("status").get("exec_info").get("queue_remaining");
-                if (queueRemainingNode.asInt() == 0) {
-                    jsonNodes = generator.nextWorkflow();
-                    pushTask(jsonNodes);
-                }
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                // 为避免解析json出错时，错过剩余任务为0的信息，直接追加一个新任务
-                jsonNodes = DynamicPrompt.dynamicBuilder();
-                pushTask(jsonNodes);
-            }
-            return WebSocket.Listener.super.onText(webSocket, data, last);
-        }
-    }
-
-    private static void move4K() {
-        File output = new File("output");
-        File[] files = output.listFiles(e ->
-                e.isFile() && e.getName().endsWith(".png"));
-
-        for (File file : files) {
-            try {
-                BufferedImage image = ImageIO.read(file);
-                if (image.getWidth() == 2160 || image.getHeight() == 2160) {
-                    // 分辨率为4K，移动文件
-                    Path source = file.toPath();
-                    Path target = Path.of("output/upscale/" + file.getName());
-                    Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
-                    System.out.println("文件移动成功");
-                }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
 }

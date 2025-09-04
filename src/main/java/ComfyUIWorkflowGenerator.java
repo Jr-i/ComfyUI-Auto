@@ -1,5 +1,5 @@
-import POJO.GenerationState;
-import POJO.ModelConfig;
+import pojo.GenerationState;
+import pojo.ModelConfig;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -24,7 +24,7 @@ public class ComfyUIWorkflowGenerator {
         MODEL_FIRST
     }
 
-    private static final ObjectMapper objectMapper = new ObjectMapper()
+    private final ObjectMapper objectMapper = new ObjectMapper()
             .enable(SerializationFeature.INDENT_OUTPUT);
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -42,9 +42,6 @@ public class ComfyUIWorkflowGenerator {
         // 1. 加载主配置
         Properties props = new Properties();
         try (InputStream input = getClass().getClassLoader().getResourceAsStream("application.properties")) {
-            if (input == null) {
-                throw new IOException("Sorry, unable to find application.properties");
-            }
             props.load(input);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -64,6 +61,7 @@ public class ComfyUIWorkflowGenerator {
         }
 
         try {
+            // todo 校验文件是否被更改，如被更改应该重新开始循环
             this.models = objectMapper.readValue((
                     new File(props.getProperty("path.models"))), new TypeReference<>() {
             });
@@ -75,7 +73,7 @@ public class ComfyUIWorkflowGenerator {
         this.prompts = deleteEmptyLine(props.getProperty("path.prompts"));
     }
 
-    static List<String> deleteEmptyLine(String filePath) {
+    private List<String> deleteEmptyLine(String filePath) {
         try (Stream<String> lines = Files.lines(Paths.get(filePath))) {
             return lines.filter(line -> !line.trim().isEmpty()).collect(Collectors.toList());
         } catch (IOException e) {

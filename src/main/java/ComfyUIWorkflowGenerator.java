@@ -128,7 +128,7 @@ public class ComfyUIWorkflowGenerator {
         KSamplerNode.put("sampler_name", params.samplerName());
         KSamplerNode.put("scheduler", params.scheduler());
 
-        // 根据次数对
+        // cfg 和 step 随机浮动
         int count = state.getCurrentRepetitionCount();
         if (params.cfg_test()) {
             KSamplerNode.put("cfg", count % 3 - 1 + params.cfg());
@@ -137,9 +137,28 @@ public class ComfyUIWorkflowGenerator {
             KSamplerNode.put("steps", count / 3 - 2 + params.steps());
         }
 
-        workflow.with("4").with("inputs").put("ckpt_name", currentModel.name());
-        workflow.with("5").with("inputs").put("width", params.width());
-        workflow.with("5").with("inputs").put("height", params.height());
+        // 横屏还是竖屏
+        if (count < 15) {
+            workflow.with("5").with("inputs").put("width", params.width());
+            workflow.with("5").with("inputs").put("height", params.height());
+        } else {
+            workflow.with("5").with("inputs").put("width", params.height());
+            workflow.with("5").with("inputs").put("height", params.width());
+        }
+
+        String checkpointName = currentModel.name();
+        workflow.with("4").with("inputs").put("ckpt_name", checkpointName);
+
+        // 修改生成文件名称
+        String filenamePrefix = switch (checkpointName) {
+            case "iniverseMixSFWNSFW_ponyRealGuofengV51.safetensors" -> "iNiverseMix GuoFeng Pony V5.1";
+            case "cyberrealisticPony_v127Alt.safetensors" -> "CyberRealistic Pony V12.7 Alt";
+            case "realismByStableYogi_v60FP16.safetensors" -> "Realism Pony V6.0 FP16";
+            case "realDream_sdxlPony20.safetensors" -> "RealDream SDXL Pony 20";
+            default -> "ComfyUI";
+        };
+        workflow.with("14").with("inputs").put("filename_prefix", filenamePrefix);
+
         workflow.with("6").with("inputs").put("text", params.positive() + currentPrompt);
         workflow.with("7").with("inputs").put("text", params.negative());
 

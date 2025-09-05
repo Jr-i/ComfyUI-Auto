@@ -105,7 +105,7 @@ public class MyWebSocketListener implements WebSocket.Listener {
         System.err.println("发生错误: " + error.getMessage());
         error.printStackTrace();
         // 释放latch，让主线程可以结束。
-//        latch.countDown();
+        latch.countDown();
     }
 
     private void pushTask() {

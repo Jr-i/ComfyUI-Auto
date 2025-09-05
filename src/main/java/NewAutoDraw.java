@@ -1,23 +1,12 @@
 import java.net.URI;
 import java.net.http.HttpClient;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class NewAutoDraw {
     private static final String clientId = "javaClient";
     public static final String host = "127.0.0.1:8188";
 
     public static void main(String[] args) {
-        // todo 采用更优雅的保活方式
-        new Timer().scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                new AtomicInteger(0).incrementAndGet();
-            }
-        }, 0, 1000); // 立即开始，每秒执行一次
-
         // 用于在示例中阻塞主线程，直到WebSocket关闭
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -35,5 +24,14 @@ public class NewAutoDraw {
                 )
                 .join();
         System.out.println("WebSocket 握手完成，客户端已就绪。");
+
+        try {
+            // 让主线程等待，直到WebSocket连接关闭或出错
+            latch.await();
+            System.out.println("主线程已解除阻塞，程序即将退出。");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt(); // 重新设置中断状态
+            System.err.println("主线程在等待WebSocket关闭时被中断: " + e.getMessage());
+        }
     }
 }

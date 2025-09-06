@@ -13,14 +13,20 @@ import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
 import java.net.http.WebSocket;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.*;
 
 /**
  * 实现了 WebSocket.Listener 接口的监听器。
  * 这是处理所有WebSocket事件（连接、消息、关闭、错误）的核心。
  */
 public class MyWebSocketListener implements WebSocket.Listener {
+    // 定义超时时间
+    private static final long TIMEOUT_MINUTES = 5;
+    // 创建一个单线程的调度器来处理超时任务。
+    // 使用单线程确保任务调度的顺序性。
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    // 用于持有当前待执行的超时任务的引用，以便我们可以取消它。
+    private ScheduledFuture<?> timeoutTask;
     private static final ObjectMapper objectMapper = new ObjectMapper()
             .enable(SerializationFeature.INDENT_OUTPUT);
     private static final ComfyUIWorkflowGenerator generator = new ComfyUIWorkflowGenerator();
@@ -54,6 +60,8 @@ public class MyWebSocketListener implements WebSocket.Listener {
     @Override
     public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
         System.out.println("监听到消息: " + data);
+        // 如果连续5分钟未收到任何消息，尝试主动推送任务，以增强代码的健壮性。
+        resetTimeout();
 
         try {
             JsonNode rootNode = objectMapper.readTree(data.toString());
@@ -89,6 +97,7 @@ public class MyWebSocketListener implements WebSocket.Listener {
     @Override
     public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
         System.out.println("WebSocket 连接已关闭. 状态码: " + statusCode + ", 原因: " + reason);
+        shutdownScheduler(); // 清理资源
         // 释放latch，让主线程可以结束。
         latch.countDown();
         return null;
@@ -104,6 +113,7 @@ public class MyWebSocketListener implements WebSocket.Listener {
     public void onError(WebSocket webSocket, Throwable error) {
         System.err.println("发生错误: " + error.getMessage());
         error.printStackTrace();
+        shutdownScheduler(); // 清理资源
         // 释放latch，让主线程可以结束。
         latch.countDown();
     }
@@ -130,6 +140,40 @@ public class MyWebSocketListener implements WebSocket.Listener {
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private synchronized void resetTimeout() {
+        // 1. 如果存在一个已经安排好的超时任务，取消它。
+        if (timeoutTask != null && !timeoutTask.isDone()) {
+            // false表示不中断 timeoutTask，但取消 timeoutTask尚未开始执行的任务，如取消调用pushTask方法
+            timeoutTask.cancel(false);
+        }
+        // 2. 安排一个新的超时任务。
+        //    这个任务将在 TIMEOUT_SECONDS 秒后执行 pushTask() 方法。
+        timeoutTask = scheduler.schedule(() -> {
+            System.out.printf("超时！在 %d 分钟内未收到新消息，执行 pushTask...\n", TIMEOUT_MINUTES);
+            pushTask();
+            // 主动推送任务后，如果 ComfyUI仍未回复消息，自动触发倒计时，则不应手动重启计时器，导致 ComfyUI彻底卡死。
+//            resetTimeout();
+        }, TIMEOUT_MINUTES, TimeUnit.MINUTES);
+    }
+
+    /**
+     * 安全地关闭调度器。
+     */
+    private void shutdownScheduler() {
+        System.out.println("正在关闭超时任务调度器...");
+        scheduler.shutdownNow(); // 尝试立即停止所有正在执行和等待的任务
+        try {
+            // 等待一段时间以确保线程池完全关闭
+            if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                System.err.println("调度器在超时后仍未关闭。");
+            }
+        } catch (InterruptedException e) {
+            // 在关闭过程中当前线程被中断，也强制关闭
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
         }
     }
 }

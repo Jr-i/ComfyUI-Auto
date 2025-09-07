@@ -17,7 +17,7 @@ import java.util.Properties;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class ComfyUIWorkflowGenerator {
+public class WorkflowGenerator {
 
     public enum TraversalStrategy {
         PROMPT_FIRST,
@@ -38,7 +38,7 @@ public class ComfyUIWorkflowGenerator {
     private final List<ModelConfig> models;
     private final List<String> prompts;
 
-    public ComfyUIWorkflowGenerator() {
+    public WorkflowGenerator() {
         // 1. 加载主配置
         Properties props = new Properties();
         try (InputStream input = getClass().getClassLoader().getResourceAsStream("application.properties")) {
@@ -150,14 +150,7 @@ public class ComfyUIWorkflowGenerator {
         workflow.with("4").with("inputs").put("ckpt_name", checkpointName);
 
         // 修改生成文件名称
-        String filenamePrefix = switch (checkpointName) {
-            case "iniverseMixSFWNSFW_ponyRealGuofengV51.safetensors" -> "iNiverseMix GuoFeng Pony V5.1";
-            case "cyberrealisticPony_v127Alt.safetensors" -> "CyberRealistic Pony V12.7 Alt";
-            case "realismByStableYogi_v60FP16.safetensors" -> "Realism Pony V6.0 FP16";
-            case "realDream_sdxlPony20.safetensors" -> "RealDream SDXL Pony 20";
-            default -> "ComfyUI";
-        };
-        workflow.with("14").with("inputs").put("filename_prefix", filenamePrefix);
+        workflow.with("14").with("inputs").put("filename_prefix", params.filenamePrefix());
 
         workflow.with("6").with("inputs").put("text", params.positive() + currentPrompt);
         workflow.with("7").with("inputs").put("text", params.negative());

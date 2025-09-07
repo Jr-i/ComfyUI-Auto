@@ -13,6 +13,8 @@ import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
 import java.net.http.WebSocket;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.*;
 
 /**
@@ -20,6 +22,10 @@ import java.util.concurrent.*;
  * 这是处理所有WebSocket事件（连接、消息、关闭、错误）的核心。
  */
 public class MyWebSocketListener implements WebSocket.Listener {
+    // 定义一个成员变量来累积消息分片
+    private final StringBuilder messageBuffer = new StringBuilder();
+    // 格式化时间（可选）
+    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     // 定义超时时间
     private static final long TIMEOUT_MINUTES = 5;
     // 创建一个单线程的调度器来处理超时任务。
@@ -29,7 +35,7 @@ public class MyWebSocketListener implements WebSocket.Listener {
     private ScheduledFuture<?> timeoutTask;
     private static final ObjectMapper objectMapper = new ObjectMapper()
             .enable(SerializationFeature.INDENT_OUTPUT);
-    private static final ComfyUIWorkflowGenerator generator = new ComfyUIWorkflowGenerator();
+    private static final WorkflowGenerator generator = new WorkflowGenerator();
     // 使用 CountDownLatch 来等待 onClose 事件，以防止主线程过早退出
     private final CountDownLatch latch;
 
@@ -59,28 +65,38 @@ public class MyWebSocketListener implements WebSocket.Listener {
      */
     @Override
     public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
-        System.out.println("监听到消息: " + data);
         // 如果连续5分钟未收到任何消息，尝试主动推送任务，以增强代码的健壮性。
         resetTimeout();
 
-        try {
-            JsonNode rootNode = objectMapper.readTree(data.toString());
-            JsonNode queueNode = rootNode
-                    .path("data")
-                    .path("status")
-                    .path("exec_info")
-                    .path("queue_remaining");
+        // 2. 将收到的数据分片追加到缓冲区
+        messageBuffer.append(data);
+        // 3. 只有当这是最后一个分片时，才处理完整的消息
+        if (last) {
+            try {
+                String completeMessage = messageBuffer.toString();
 
-            if (!queueNode.isMissingNode() && queueNode.isInt() && queueNode.asInt() == 0) {
-                // todo 打印日志：推送任务，上一张图的计算时间
-                pushTask();
+                JsonNode rootNode = objectMapper.readTree(completeMessage);
+                JsonNode queueNode = rootNode
+                        .path("data")
+                        .path("status")
+                        .path("exec_info")
+                        .path("queue_remaining");
+
+                // 在 ComfyUI 的任务序列中维持至少三个待完成任务
+                if (!queueNode.isMissingNode() && queueNode.isInt() && queueNode.asInt() < 3) {
+                    // todo 打印日志：推送任务，上一张图的计算时间
+                    pushTask();
+                }
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+            } finally {
+                // 4. 处理完一条完整的消息后，清空缓冲区，为下一条消息做准备
+                messageBuffer.setLength(0);
             }
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
-        } finally {
-            // 处理完消息后，继续请求下一条消息。
-            webSocket.request(1);
         }
+
+        // 处理完消息后，继续请求下一条消息。
+        webSocket.request(1);
 
         // 返回 null 表示我们已经同步处理完成。
         return null;
@@ -132,6 +148,9 @@ public class MyWebSocketListener implements WebSocket.Listener {
             httpPost.setEntity(params);
 
             try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
+                // 打印结果
+                System.out.println(LocalDateTime.now().format(formatter) + " 向ComfyUI推送了新的任务");
+
                 HttpEntity responseEntity = response.getEntity();
                 if (responseEntity != null) {
                     String result = EntityUtils.toString(responseEntity, "utf-8");
@@ -163,7 +182,7 @@ public class MyWebSocketListener implements WebSocket.Listener {
      * 安全地关闭调度器。
      */
     private void shutdownScheduler() {
-        System.out.println("正在关闭超时任务调度器...");
+        System.out.println("正在关闭调度器...");
         scheduler.shutdownNow(); // 尝试立即停止所有正在执行和等待的任务
         try {
             // 等待一段时间以确保线程池完全关闭

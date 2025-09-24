@@ -7,14 +7,12 @@ public record ModelConfig(String name, Parameters parameters) {
     public record Parameters(
         String filenamePrefix,
         int steps,
-        double cfg,
+        int cfg,
         @JsonProperty("sampler_name") String samplerName,
         String scheduler,
         String positive,
         String negative,
         int width,
-        int height,
-        boolean steps_test,
-        boolean cfg_test
+        int height
     ) {}
 }

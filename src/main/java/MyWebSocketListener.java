@@ -82,8 +82,8 @@ public class MyWebSocketListener implements WebSocket.Listener {
                         .path("exec_info")
                         .path("queue_remaining");
 
-                // 在 ComfyUI 的任务序列中维持至少三个待完成任务
-                if (!queueNode.isMissingNode() && queueNode.isInt() && queueNode.asInt() < 3) {
+                // 确保 ComfyUI 的任务队列中始终有待完成任务
+                if (!queueNode.isMissingNode() && queueNode.isInt() && queueNode.asInt() < 2) {
                     // todo 打印日志：推送任务，上一张图的计算时间
                     pushTask();
                 }

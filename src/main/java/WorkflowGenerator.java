@@ -1,9 +1,9 @@
-import pojo.GenerationState;
-import pojo.ModelConfig;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import pojo.GenerationState;
+import pojo.ModelConfig;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,7 +48,7 @@ public class WorkflowGenerator {
         }
 
         this.strategy = TraversalStrategy.valueOf(props.getProperty("traversal.strategy", "PROMPT_FIRST").toUpperCase());
-        this.repetitionCount = Integer.parseInt(props.getProperty("repetition.count", "1"));
+        this.repetitionCount = Integer.parseInt(props.getProperty("repetition.count", "0"));
 
         // 遍历状态
         this.stateFile = new File(props.getProperty("path.state"));
@@ -128,23 +128,28 @@ public class WorkflowGenerator {
         KSamplerNode.put("sampler_name", params.samplerName());
         KSamplerNode.put("scheduler", params.scheduler());
 
-        // cfg 和 step 随机浮动
         int count = state.getCurrentRepetitionCount();
-        if (params.cfg_test()) {
-            KSamplerNode.put("cfg", count % 3 - 1 + params.cfg());
-        }
-        if (params.steps_test()) {
-            KSamplerNode.put("steps", count / 3 - 2 + params.steps());
-        }
+        int halfRepetitionCount = repetitionCount / 2;
 
         // 横屏还是竖屏
-        if (count < 15) {
+        if (count < halfRepetitionCount) {
             workflow.with("5").with("inputs").put("width", params.width());
             workflow.with("5").with("inputs").put("height", params.height());
+
         } else {
             workflow.with("5").with("inputs").put("width", params.height());
             workflow.with("5").with("inputs").put("height", params.width());
+            count = count - halfRepetitionCount;
+
         }
+
+        // 分解因子
+        int num_cfg = (int) Math.sqrt(halfRepetitionCount);
+        int num_steps = halfRepetitionCount / num_cfg;
+
+        // cfg 和 step 的值浮动
+        KSamplerNode.put("steps", count % num_steps - num_steps / 2 + params.steps());
+        KSamplerNode.put("cfg", count / num_steps - num_cfg / 2 + params.cfg());
 
         String checkpointName = currentModel.name();
         workflow.with("4").with("inputs").put("ckpt_name", checkpointName);
